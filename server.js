@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(bodyparser.json());
 app.use(bodyparser.urlencoded({
-    extended:true
+    extended: true
 }));
 
 
@@ -91,102 +91,104 @@ app.post('/savedata', (req, res) => {
     const previousPath = req.body.previousPath;
     const nextPath = req.body.nextPath;
     fs.readFile('routes.json', 'utf8', (err, data) => {
-        if (err){
+        if (err) {
             console.log(err);
         } else {
-        obj = JSON.parse(data);
-        console.log(obj);
-        if(obj.routes.length === 0) {
-            const { newJsonForPreviousPath, newJsonForNextPath } = insertNewRow(previousPath, nextPath);
-            obj.routes.push(newJsonForPreviousPath,newJsonForNextPath);
-        } else {
-            const currentRoutes = obj.routes;
-            let routeMatchKey = '';
-            let nextMatchKey = '';
-            const matchingRoutesArray = currentRoutes.filter((existingRoute) => {
-                let matchFound = false;
-                Object.keys(existingRoute).map((routeKey) => {
-                    console.log(routeKey);
-                    if(routeKey === previousPath) {
-                        routeMatchKey = routeKey;
-                        matchFound = true;
-                    } else if(routeKey === nextPath) {
-                        nextMatchKey = routeKey;
-                    }
-                })
-                return matchFound;
-            });
-            const matchingRoutes = matchingRoutesArray[0];
-            console.log('Matching Routes');
-            console.log(JSON.stringify(matchingRoutes));
-            if(matchingRoutes && routeMatchKey !== '') {
-                let matchFound = false;
-                matchingRoutes[routeMatchKey].map((inRoute) => {
-                    Object.keys(inRoute).map((matchKey) => {
-                        if(matchKey === nextPath) {
+            obj = JSON.parse(data);
+            console.log(obj);
+            if (obj.routes.length === 0) {
+                const { newJsonForPreviousPath, newJsonForNextPath } = insertNewRow(previousPath, nextPath);
+                obj.routes.push(newJsonForPreviousPath, newJsonForNextPath);
+            } else {
+                const currentRoutes = obj.routes;
+                let routeMatchKey = '';
+                let nextMatchKey = '';
+                const matchingRoutesArray = currentRoutes.filter((existingRoute) => {
+                    let matchFound = false;
+                    Object.keys(existingRoute).map((routeKey) => {
+                        console.log(routeKey);
+                        if (routeKey === previousPath) {
+                            routeMatchKey = routeKey;
                             matchFound = true;
-                            inRoute[matchKey] = inRoute[matchKey] + 1;
+                        } else if (routeKey === nextPath) {
+                            nextMatchKey = routeKey;
                         }
                     })
-                })
-                if(!matchFound) {
+                    return matchFound;
+                });
+                const matchingRoutes = matchingRoutesArray[0];
+                console.log('Matching Routes');
+                console.log(JSON.stringify(matchingRoutes));
+                if (matchingRoutes && routeMatchKey !== '') {
+                    let matchFound = false;
+                    matchingRoutes[routeMatchKey].map((inRoute) => {
+                        Object.keys(inRoute).map((matchKey) => {
+                            if (matchKey === nextPath) {
+                                matchFound = true;
+                                inRoute[matchKey] = inRoute[matchKey] + 1;
+                            }
+                        })
+                    })
+                    if (!matchFound) {
+                        const newPath = {
+                            [nextPath]: 1
+                        };
+                        matchingRoutes[routeMatchKey].push(newPath);
+                        if (nextMatchKey === '') {
+                            const newJsonForNextPath = {};
+                            newJsonForNextPath[nextPath] = [];
+                            obj.routes.push(newJsonForNextPath);
+                        }
+                    }
+                } else if (routeMatchKey === '' && nextMatchKey === '') {
+                    const { newJsonForPreviousPath, newJsonForNextPath } = insertNewRow(previousPath, nextPath);
+                    obj.routes.push(newJsonForPreviousPath, newJsonForNextPath);
+                } else if (routeMatchKey === '') {
+                    const newJsonForPreviousPath = {};
+                    newJsonForPreviousPath[previousPath] = [];
                     const newPath = {
                         [nextPath]: 1
                     };
-                    matchingRoutes[routeMatchKey].push(newPath);
-                    if(nextMatchKey === '') {
-                        const newJsonForNextPath = {};
-                        newJsonForNextPath[nextPath] = [];
-                        obj.routes.push(newJsonForNextPath);
-                    }
+                    newJsonForPreviousPath[previousPath].push(newPath);
+                    obj.routes.push(newJsonForPreviousPath);
                 }
-            } else if(routeMatchKey === '' && nextMatchKey === '') {
-                const { newJsonForPreviousPath, newJsonForNextPath } = insertNewRow(previousPath, nextPath);
-                obj.routes.push(newJsonForPreviousPath,newJsonForNextPath);
-            } else if(routeMatchKey === '') {
-                const newJsonForPreviousPath = {};
-                newJsonForPreviousPath[previousPath] = [];
-                const newPath = {
-                    [nextPath]: 1
-                };
-                newJsonForPreviousPath[previousPath].push(newPath);
-                obj.routes.push(newJsonForPreviousPath);
             }
+
+            const modifiedjson = JSON.stringify(obj);
+            fs.writeFile('routes.json', modifiedjson, 'utf8', (err, data) => {
+                if (err) {
+                    res.json({ error: 'error' }).status(200);
+                }
+                res.json({ success: 'sucess' }).status(200);
+            });
         }
-        
-        const modifiedjson = JSON.stringify(obj);
-        fs.writeFile('routes.json', modifiedjson, 'utf8', (err, data) => {
-            if(err) {
-                res.json({error: 'error'}).status(200);
-            }
-            res.json({success: 'sucess'}).status(200);
-        }); 
-    }});
+    });
 });
 
 app.get('/getData', (req, res) => {
     fs.readFile('routes.json', (err, data) => {
-        if(err) {
-            res.json({error: 'error'}).status(200);
+        if (err) {
+            res.json({ error: 'error' }).status(200);
         }
         const originalRouteData = JSON.parse(data);
         const routeData = originalRouteData.routes;
-        const modifiedRouteData = routeData.map((route) => {
+        const modifiedRouteData = [];
+        routeData.map((route) => {
             Object.keys(route).map((visitedUrl) => {
-               const maxVisited = Object.keys(visitedUrl).reduce((prev, next) => {
-                    if(visitedUrl[prev] > visitedUrl[next]) {
-                        return visitedUrl[prev];
+                const mostVisited = route[visitedUrl].reduce((prev, next) => {
+                    if (Object.values(prev) && Object.values(prev) > Object.values(next)) {
+                        return prev;
                     }
-                    return visitedUrl[next];
-                }, 0);
-                console.log(maxVisited)
-                return {
-                    [routeData[route]] : maxVisited
+                    return next;
+                }, {})
+                const modifiedObj = {
+                    [visitedUrl]: mostVisited
                 };
+                modifiedRouteData.push(modifiedObj)
             })
         })
         console.log(modifiedRouteData);
-        res.json({routeData}).status(200);
+        res.json({ routeData: modifiedRouteData }).status(200);
     })
 })
 
