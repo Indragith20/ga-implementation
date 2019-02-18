@@ -1,0 +1,1 @@
+{"routes":[{"/":[{"/about":2},{"/contacts":1}]},{"/about":[{"/":2},{"/contacts":1}]},{"/contacts":[{"/about":1},{"/":1}]}]}
